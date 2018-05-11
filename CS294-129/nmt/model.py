@@ -8,18 +8,23 @@ from torch.nn.utils.rnn import pad_packed_sequence
 
 
 class EncoderLSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers=1, num_directions=1, dropout=0, forget_bias=1.0):
+    def __init__(self, input_size, hidden_size, num_layers=1, num_directions=1, dropout=0, forget_bias=1.0, init_weight=None):
         super(EncoderLSTM, self).__init__()
+        self.init_weight = init_weight
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.num_directions = num_directions
         self.dropout = dropout
+        
         
         self.embedding = nn.Embedding(input_size, hidden_size)
         self.lstm = nn.LSTM(hidden_size, hidden_size, batch_first=True)
         # set forget bias initial values
         self.lstm.bias_ih_l0[hidden_size:2*hidden_size].data.fill_(forget_bias) 
         self.lstm.bias_hh_l0[hidden_size:2*hidden_size].data.fill_(forget_bias)
+        if self.init_weight is not None:
+            self.lstm.weight_ih_l0.data.uniform_(-self.init_weight, self.init_weight)
+            self.lstm.weight_hh_l0.data.uniform_(-self.init_weight, self.init_weight)
         self.dropout = nn.Dropout(p=dropout)
     def forward(self, input_tuple, prev_h, prev_c):
         # input
@@ -40,19 +45,22 @@ class EncoderLSTM(nn.Module):
     def initHidden(self, batch_size, device):
         return torch.zeros(self.num_layers*self.num_directions, batch_size, self.hidden_size, device=device)
 
-
 # num_layers and num_directions for encoder must be 0 when this decoder is used
 class DecoderLSTM(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout=0, forget_bias=1.0):
+    def __init__(self, hidden_size, output_size, dropout=0, forget_bias=1.0, init_weight=None):
         super(DecoderLSTM, self).__init__()
         self.hidden_size = hidden_size
-        
+        self.init_weight = init_weight
+
         self.embedding = nn.Embedding(output_size, hidden_size)
         self.lstm = nn.LSTMCell(hidden_size, hidden_size)
 
         # set forget bias initial values
         self.lstm.bias_ih[hidden_size:2*hidden_size].data.fill_(forget_bias) 
         self.lstm.bias_hh[hidden_size:2*hidden_size].data.fill_(forget_bias)
+        if self.init_weight is not None:
+            self.lstm.weight_ih.data.uniform_(-self.init_weight, self.init_weight)
+            self.lstm.weight_hh.data.uniform_(-self.init_weight, self.init_weight)
 
         self.out = nn.Linear(hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
@@ -66,18 +74,21 @@ class DecoderLSTM(nn.Module):
     def initHidden(self, batch_size, SOS_token, device):
         return torch.full((batch_size,), SOS_token, dtype=torch.long, device=device)
 
-
 class DotAttenDecoderLSTM(nn.Module):
-    def __init__(self, hidden_size, output_size, attention_vector_size, dropout=0, forget_bias=1.0):
+    def __init__(self, hidden_size, output_size, attention_vector_size, dropout=0, forget_bias=1.0, init_weight=None):
         super(DotAttenDecoderLSTM, self).__init__()
         self.hidden_size = hidden_size
-        
+        self.init_weight = init_weight
+
         self.embedding = nn.Embedding(output_size, hidden_size)
         self.lstm = nn.LSTMCell(hidden_size, hidden_size)
 
         # set forget bias initial values
         self.lstm.bias_ih[hidden_size:2*hidden_size].data.fill_(forget_bias) 
         self.lstm.bias_hh[hidden_size:2*hidden_size].data.fill_(forget_bias)
+        if self.init_weight is not None:
+            self.lstm.weight_ih.data.uniform_(-self.init_weight, self.init_weight)
+            self.lstm.weight_hh.data.uniform_(-self.init_weight, self.init_weight)
 
         self.out = nn.Linear(hidden_size*2, attention_vector_size)
         self.out2 = nn.Linear(attention_vector_size, output_size)
