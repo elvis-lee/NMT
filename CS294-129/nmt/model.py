@@ -18,8 +18,8 @@ class EncoderLSTM(nn.Module):
         self.embedding = nn.Embedding(input_size, hidden_size)
         self.lstm = nn.LSTM(hidden_size, hidden_size, batch_first=True)
         # set forget bias initial values
-        self.lstm.bias_ih_10[hidden_size:2*hidden_size].data.fill_(forget_bias) 
-        self.lstm.bias_hh_10[hidden_size:2*hidden_size].data.fill_(forget_bias)
+        self.lstm.bias_ih_l0[hidden_size:2*hidden_size].data.fill_(forget_bias) 
+        self.lstm.bias_hh_l0[hidden_size:2*hidden_size].data.fill_(forget_bias)
         self.dropout = nn.Dropout(p=dropout)
     def forward(self, input_tuple, prev_h, prev_c):
         # input
@@ -53,7 +53,7 @@ class DecoderLSTM(nn.Module):
         # set forget bias initial values
         self.lstm.bias_ih[hidden_size:2*hidden_size].data.fill_(forget_bias) 
         self.lstm.bias_hh[hidden_size:2*hidden_size].data.fill_(forget_bias)
-        
+
         self.out = nn.Linear(hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
         self.dropout = nn.Dropout(p=dropout)
