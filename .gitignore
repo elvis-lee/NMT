@@ -4,6 +4,9 @@ datasets/
 # Model checkpoints
 model_ckpt/
 
+# output
+output/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
