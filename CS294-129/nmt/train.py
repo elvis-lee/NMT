@@ -3,12 +3,14 @@ import torch
 import torch.nn as nn
 from torch import optim
 from torch.nn.utils.rnn import pad_sequence, pack_sequence, pack_padded_sequence, pad_packed_sequence
+from torch.nn.utils import clip_grad_norm_
 from .utils import resume_order
 from .eval import eval
 from .bleu import getBLEU
+from itertools import chain
 
 
-def train(source_tuple, target_tuple, encoder, decoder, encoder_optimizer, decoder_optimizer, batch_size, device, SOS_token, PAD_token):
+def train(source_tuple, target_tuple, encoder, decoder, encoder_optimizer, decoder_optimizer, batch_size, device, SOS_token, PAD_token, max_norm=None):
     
     encoder.train()
     decoder.train()
@@ -51,13 +53,16 @@ def train(source_tuple, target_tuple, encoder, decoder, encoder_optimizer, decod
     
     loss.backward()
     
+    if max_norm is not None:
+        clip_grad_norm_(chain(encoder.parameters(), decoder.parameters()), max_norm)
+
     encoder_optimizer.step()
     decoder_optimizer.step()
     
     return loss.item()
 
 
-def trainIters(batch_generator_train, batch_generator_test, encoder, decoder, n_iters, batch_size, device, SOS_token, PAD_token, print_every=1000, plot_every=100, step_every_epoch=1000, learning_rate=0.1, bleu_params=None):
+def trainIters(batch_generator_train, batch_generator_test, encoder, decoder, n_iters, batch_size, device, SOS_token, PAD_token, print_every=1000, plot_every=100, step_every_epoch=1000, learning_rate=0.1, bleu_params=None, max_norm=None):
     
     epoch = 0
 
@@ -72,7 +77,7 @@ def trainIters(batch_generator_train, batch_generator_test, encoder, decoder, n_
     
     for iter in range(1, n_iters+1):
         source_tuple, target_tuple = batch_generator_train.get_batch()
-        loss = train(source_tuple, target_tuple, encoder, decoder, encoder_optimizer, decoder_optimizer, batch_size, device, SOS_token, PAD_token)
+        loss = train(source_tuple, target_tuple, encoder, decoder, encoder_optimizer, decoder_optimizer, batch_size, device, SOS_token, PAD_token, max_norm)
         print_loss_total += loss
         plot_loss_total += loss
         
